@@ -200,7 +200,7 @@ class Lane(object):
 
         right, left = self.get_lanes(img)
         mask = np.zeros_like(img, dtype=np.uint8)
-        lane.draw_lines(mask, [right, left])
+        self.draw_lines(mask, [right, left])
 
         img_with_lanes = cv2.addWeighted(initial_img, 0.8, mask, 1.0, 0.)
 
