@@ -6,14 +6,14 @@ import math
 
 class Lane(object):
 
-    def __init__(self, height=0.43,
+    def __init__(self, height=0.42,
                  canny_lowT = 150,
                  canny_highT = 200,
                  rho = 1,
                  theta = np.pi / 180,
-                 min_line_len = 24,
-                 threshold = 16,
-                 max_line_gap = 6,
+                 min_line_len = 1/25,
+                 threshold = 1/25,
+                 max_line_gap = 1/100,
                  kernel_size = 3,
                  split = 0.3,
                  frames_moving_avg=5):
@@ -203,6 +203,7 @@ class Lane(object):
         self.shapes = img.shape
 
         preprocessed = self.__grayscale(img)
+        #preprocessed = self.__gaussian_blur(preprocessed)
         preprocessed = self.__norm_img(preprocessed)
         preprocessed = self.__canny(preprocessed)
         preprocessed = self.__region_of_interest(preprocessed)
@@ -214,18 +215,28 @@ class Lane(object):
     def get_lanes(self, img):
 
         processed_img = self.__img_preprocessing_pipeline(img)
-        #plt.imshow(processed_img)
+
+        min_side = min(self.shapes[:-1])
         lines = self.__hough_lines(processed_img,
                                    self.rho,
                                    self.theta,
-                                   self.threshold,
-                                   self.min_line_len,
-                                   self.max_line_gap)
+                                   int(min_side*self.threshold),
+                                   int(min_side*self.min_line_len),
+                                   int(min_side*self.max_line_gap))
+
+
+        #TEST:
+        mask = np.zeros_like(processed_img, dtype=np.uint8)
+        self.draw_lines(mask, lines)
+        plt.imshow(mask)
+
+
 
         try:
             lines = self.__filter_lines(lines)
-            height = self.__line_hight(lines)
+
             right_lane, left_lane = self.__find_2lines(lines)
+            height = self.__line_hight(lines)
             right_lane = self.__calculate_lines(right_lane, self.shapes, portion=height/self.shapes[0])
             left_lane = self.__calculate_lines(left_lane, self.shapes, portion=height / self.shapes[0])
             self.right_lane_buffer = right_lane
@@ -276,7 +287,10 @@ if __name__ == "__main__":
 
     import os
 
-    lane = Lane()
+    lane = Lane(height=0.42,
+                min_line_len=1/20, max_line_gap=1/60,
+                threshold=1/25,
+                frames_moving_avg=7)
 
     read_path = "test_images/"
     save_path = "test_images_output/"
@@ -284,7 +298,6 @@ if __name__ == "__main__":
 
     file_name = files[0]
     img_orig = plt.imread(os.path.join(read_path, file_name))
-
     img_with_lanes = lane.provide_img_with_lanes(img_orig)
     plt.imshow(img_with_lanes, cmap="gray")
 
