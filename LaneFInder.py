@@ -12,7 +12,7 @@ class Lane(object):
                  rho = 1,
                  theta = np.pi / 180,
                  min_line_len = 24,
-                 threshold = 20,
+                 threshold = 16,
                  max_line_gap = 6,
                  kernel_size = 3,
                  split = 0.3):
@@ -29,6 +29,8 @@ class Lane(object):
         self.shapes = [640, 720, 3]
         self.__kernel_size = kernel_size
         self.__split = split
+
+        self.__buffer = [[478, 309, 167, 540],[482, 309, 864, 540]]
 
 
     @property
@@ -172,6 +174,7 @@ class Lane(object):
     def get_lanes(self, img):
 
         processed_img = self.__img_preprocessing_pipeline(img)
+        #plt.imshow(processed_img)
         lines = self.__hough_lines(processed_img,
                                    self.rho,
                                    self.theta,
@@ -179,13 +182,29 @@ class Lane(object):
                                    self.min_line_len,
                                    self.max_line_gap)
 
-        lines = self.__filter_lines(lines)
-        height = self.__line_hight(lines)
-        right_lane, left_lane = self.__find_2lines(lines)
-        right_lane = self.__calculate_lines(right_lane, self.shapes, portion=height/self.shapes[0])
-        left_lane = self.__calculate_lines(left_lane, self.shapes, portion=height / self.shapes[0])
+        try:
+            lines = self.__filter_lines(lines)
+            height = self.__line_hight(lines)
+            right_lane, left_lane = self.__find_2lines(lines)
+            right_lane = self.__calculate_lines(right_lane, self.shapes, portion=height/self.shapes[0])
+            left_lane = self.__calculate_lines(left_lane, self.shapes, portion=height / self.shapes[0])
+            self.__buffer = [right_lane, left_lane]
+        except:
+            right_lane, left_lane = self.__buffer
 
         return right_lane, left_lane
+
+    def provide_img_with_lanes(self, img):
+
+        initial_img = img
+
+        right, left = self.get_lanes(img)
+        mask = np.zeros_like(img, dtype=np.uint8)
+        lane.draw_lines(mask, [right, left])
+
+        img_with_lanes = cv2.addWeighted(initial_img, 0.8, mask, 1.0, 0.)
+
+        return img_with_lanes
 
     def draw_lines(self, img, lines, color=[255, 0, 0], thickness=2):
         """
@@ -219,17 +238,13 @@ if __name__ == "__main__":
     save_path = "test_images_output/"
     files = os.listdir("test_images/")
 
-    file_name = files[3]
+    file_name = files[0]
     img_orig = plt.imread(os.path.join(read_path, file_name))
 
-    right, left = lane.get_lanes(img_orig)
+    img_with_lanes = lane.provide_img_with_lanes(img_orig)
+    plt.imshow(img_with_lanes, cmap="gray")
 
-    mask = np.zeros_like(img_orig, dtype=np.uint8)
-    lane.draw_lines(mask, [right, left])
-    plt.imshow(mask, cmap="gray")
-
-    print("Right:", right)
-    print("Left:", left)
+    print("done")
 
 
 
