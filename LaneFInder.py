@@ -15,7 +15,8 @@ class Lane(object):
                  threshold = 16,
                  max_line_gap = 6,
                  kernel_size = 3,
-                 split = 0.3):
+                 split = 0.3,
+                 frames_moving_avg=5):
 
         self.height = height
         self.__verticies = []
@@ -27,10 +28,32 @@ class Lane(object):
         self.threshold = threshold
         self.max_line_gap = max_line_gap
         self.shapes = [640, 720, 3]
-        self.__kernel_size = kernel_size
-        self.__split = split
+        self._kernel_size = kernel_size
+        self._split = split
 
-        self.__buffer = [[478, 309, 167, 540],[482, 309, 864, 540]]
+        self._lane_buffer_frames = frames_moving_avg
+
+        self._right_lane_buffer = []
+        self._left_lane_buffer = []
+
+        self._missed_frames = 0
+
+
+    @property
+    def right_lane_buffer(self):
+        return self.__approximate_buffer(self._right_lane_buffer)
+
+    @right_lane_buffer.setter
+    def right_lane_buffer(self, value):
+        self.__add_to_buffer(self._right_lane_buffer, value)
+
+    @property
+    def left_lane_buffer(self):
+        return self.__approximate_buffer(self._left_lane_buffer)
+
+    @left_lane_buffer.setter
+    def left_lane_buffer(self, value):
+        self.__add_to_buffer(self._left_lane_buffer, value)
 
 
     @property
@@ -43,6 +66,22 @@ class Lane(object):
         self.__verticies = np.array([[[0, self.__shapes[0]],
                                       [int(self.__shapes[1] / 2), int(self.__shapes[0] * (1-self.height))],
                                       [self.__shapes[1], self.__shapes[0]]]])
+
+    def __add_to_buffer(self, buffer, values):
+
+        buffer.append(values)
+
+        size = len(buffer)
+        if size > self._lane_buffer_frames:
+            buffer.pop(0)
+
+    def __approximate_buffer(self, buffer):
+
+        lines = np.reshape(buffer, (-1, 4))
+
+        lane = np.mean(lines, axis=0, dtype=np.int16)
+
+        return [lane]
 
 
     def __grayscale(self, img):
@@ -74,7 +113,7 @@ class Lane(object):
 
     def __gaussian_blur(self, img):
         """Applies a Gaussian Noise kernel"""
-        return cv2.GaussianBlur(img, (self.__kernel_size, self.__kernel_size), 0)
+        return cv2.GaussianBlur(img, (self._kernel_size, self._kernel_size), 0)
 
     def __region_of_interest(self, img):
         """
@@ -117,9 +156,9 @@ class Lane(object):
                 ms.append((y1 - y0) / (x1 - x0))
 
         ms = np.array(ms)
-        right_set = lines[ms < -self.__split]
+        right_set = lines[ms < -self._split]
 
-        left_set = lines[ms > self.__split]
+        left_set = lines[ms > self._split]
 
         result = np.concatenate((right_set, left_set))
 
@@ -133,7 +172,7 @@ class Lane(object):
             for x0, y0, x1, y1 in line:
                 ms.append((x1 - x0) / (y1 - y0))
 
-        split = self.__split
+        split = self._split
         ms = np.array(ms)
         right_set = lines[ms <= split]
         right_set = np.reshape(right_set, (-1, 2))
@@ -171,6 +210,7 @@ class Lane(object):
         return preprocessed
 
 
+
     def get_lanes(self, img):
 
         processed_img = self.__img_preprocessing_pipeline(img)
@@ -188,9 +228,13 @@ class Lane(object):
             right_lane, left_lane = self.__find_2lines(lines)
             right_lane = self.__calculate_lines(right_lane, self.shapes, portion=height/self.shapes[0])
             left_lane = self.__calculate_lines(left_lane, self.shapes, portion=height / self.shapes[0])
-            self.__buffer = [right_lane, left_lane]
+            self.right_lane_buffer = right_lane
+            self.left_lane_buffer = left_lane
         except:
-            right_lane, left_lane = self.__buffer
+            self._missed_frames += 1
+
+        right_lane = self.right_lane_buffer
+        left_lane = self.left_lane_buffer
 
         return right_lane, left_lane
 
