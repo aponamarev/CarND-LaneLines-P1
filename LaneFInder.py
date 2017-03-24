@@ -149,7 +149,7 @@ class Lane(object):
                                 maxLineGap=max_line_gap)
         return lines
 
-    def __filter_lines(self, lines):
+    def __filter_lines_candidates(self, lines):
         ms = []
         for line in lines:
             for x0, y0, x1, y1 in line:
@@ -164,7 +164,7 @@ class Lane(object):
 
         return result
 
-    def __find_2lines(self, lines):
+    def __picking_lanes(self, lines):
 
         ms = []
 
@@ -184,7 +184,7 @@ class Lane(object):
 
         return right_lane, left_lane
 
-    def __calculate_lines(self, line, shape, portion=0.5):
+    def __resize_lines(self, line, shape, portion=0.5):
         return [
             [int(line[1] + line[0] * shape[0] * portion), int(shape[0] * portion), int(line[1] + line[0] * shape[0]),
              int(shape[0])]]
@@ -224,21 +224,20 @@ class Lane(object):
                                    int(min_side*self.min_line_len),
                                    int(min_side*self.max_line_gap))
 
-
+        """
         #TEST:
         mask = np.zeros_like(processed_img, dtype=np.uint8)
         self.draw_lines(mask, lines)
         plt.imshow(mask)
-
-
+        """
 
         try:
-            lines = self.__filter_lines(lines)
+            lines = self.__filter_lines_candidates(lines)
 
-            right_lane, left_lane = self.__find_2lines(lines)
+            right_lane, left_lane = self.__picking_lanes(lines)
             height = self.__line_hight(lines)
-            right_lane = self.__calculate_lines(right_lane, self.shapes, portion=height/self.shapes[0])
-            left_lane = self.__calculate_lines(left_lane, self.shapes, portion=height / self.shapes[0])
+            right_lane = self.__resize_lines(right_lane, self.shapes, portion=height / self.shapes[0])
+            left_lane = self.__resize_lines(left_lane, self.shapes, portion=height / self.shapes[0])
             self.right_lane_buffer = right_lane
             self.left_lane_buffer = left_lane
         except:
@@ -255,7 +254,7 @@ class Lane(object):
 
         right, left = self.get_lanes(img)
         mask = np.zeros_like(img, dtype=np.uint8)
-        self.draw_lines(mask, [right, left])
+        self.draw_lines(mask, [right, left], thickness=3)
 
         img_with_lanes = cv2.addWeighted(initial_img, 0.8, mask, 1.0, 0.)
 
