@@ -21,7 +21,7 @@ My pipeline includes 4 steps for preprocessing the image and and six steps to ca
 1. Convert an input image into a greyscale image
 2. Normalize resulting image
 3. Transform a normalized image into edges with Canny filter
-4. Apply a mask to elliminate a signal in the parts of the image that are unlikely to contain lanes
+4. Apply a mask to eliminate a signal in the parts of the image that are unlikely to contain lanes
 
 The lane identification includes the following steps:
 1. Identification of lines with cv2.HoughLinesP method
