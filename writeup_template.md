@@ -12,7 +12,6 @@ The goals / steps of this project are the following:
 [image3]: ./test_images_output/solidYellowCurve.jpg "LeftCurve"
 [video1]: ./test_videos_output/challenge.mp4 "Challenge Videos"
 
----
 
 ** Reflection **
 
